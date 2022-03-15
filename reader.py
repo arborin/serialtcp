@@ -37,21 +37,6 @@ def serial_connect():
     return ser
 
 
-def socket_connect():
-    '''
-        socket configuration
-        this configuration will be move in config file
-    '''
-
-    host = "0.0.0.0" 
-    port = 6070
-
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.bind((host, port))
-    s.listen()
-
-
-    return s
 
 
 def db_connect():
@@ -82,37 +67,32 @@ def send_email():
 
 
 
-def tcp_data_listener(s):
+def tcp_data_listener():
     '''
-        listening tcp prot and returns tcp data
+        connect and listening ip:prot and receive tcp data
     '''
 
-    recieved_data = ''
-    conn, addr = s.accept()
-
-    print("> Listening tcp connection...")
-    print("--------------------------------------")
-
-    with conn:
-        print(f"> Connected by {addr}")
-        
-        while True:
-            try: 
-                data = conn.recv(1024)
+    host = "192.168.1.100" 
+    port = 6070
     
-                recieved_data = data.decode('utf-8')
-                print(f"> Get TCP data: {recieved_data}")
-                conn.close()
-                
-                # break loop after getting data
-                break
-            
-            except:
-                if conn:
-                    print("TCP connection close")
-                    conn.close()
-                break
+    print()
+    print("> Listening to tcp connection...")
+    
 
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+    s.connect((host, port))
+
+    data = s.recv(1024)
+    recieved_data = data.decode('utf-8')
+    s.close()
+    print("--------------------------------------")
+    print(f"> Get TCP data: {recieved_data}")
+    print("--------------------------------------")
+    print()
+    print("> Listening to serial connection...")
+
+    
 
     return recieved_data
 
@@ -179,12 +159,12 @@ def read_serial_data():
     ser = serial_connect()
 
     # SOCKET CONNECTION
-    con = socket_connect()
+    # con = socket_connect()
 
     print("> Listening serial connection...")
 
     while(True):
-        try:
+        # try:
             if(ser == None):
                 ser = serial_connect()
                 print("> Reconnected serial port...")
@@ -198,23 +178,23 @@ def read_serial_data():
                     print(f"> Serial Data: {serial_data}")
                     print("--------------------------------------")
 
-                    tcp_data = tcp_data_listener(con)
+                    tcp_data = tcp_data_listener()
 
                     # CHECK FUNCTION
-                    check_data_in_db(serial_data, tcp_data)
+                    # check_data_in_db(serial_data, tcp_data)
 
-        except:
-            if(not(ser == None)):
-                ser.close()
-                ser = None
-                print("> Disconnecting serial port...")
+        # except:
+        #     if(not(ser == None)):
+        #         ser.close()
+        #         ser = None
+        #         print("> Disconnecting serial port...")
                 
                 
 
-                send_email()
+        #         send_email()
 
-            print("> No serial connection")
-            time.sleep(2)
+        #     print("> No serial connection")
+        #     time.sleep(2)
 
 
 
