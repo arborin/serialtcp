@@ -93,6 +93,9 @@ def tcp_data_listener():
         s.connect((host, port))
         data = s.recv(1024)
         recieved_data = data.decode('utf-8')
+        
+        s.shutdown(socket.SHUT_RDWR)
+        s.close()
         print("--------------------------------------")
         print(f"> Get TCP data: {recieved_data}")
         print("--------------------------------------")
