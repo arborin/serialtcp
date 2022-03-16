@@ -79,13 +79,20 @@ def tcp_data_listener():
     print("> Listening to tcp connection...")
     
 
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    s.connect((host, port))
+    # s.connect((host, port))
 
-    data = s.recv(1024)
-    recieved_data = data.decode('utf-8')
-    s.close()
+    # data = s.recv(1024)
+    # recieved_data = data.decode('utf-8')
+    # s.close()
+
+    recieved_data = ''
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.connect((host, port))
+        data = s.recv(1024)
+        recieved_data = data.decode('utf-8')
     print("--------------------------------------")
     print(f"> Get TCP data: {recieved_data}")
     print("--------------------------------------")
