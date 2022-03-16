@@ -91,6 +91,8 @@ def tcp_data_listener():
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((host, port))
+        s.sendall(b'Hi')
+        
         data = s.recv(1024)
         recieved_data = data.decode('utf-8')
         
@@ -99,9 +101,11 @@ def tcp_data_listener():
         print("--------------------------------------")
         print(f"> Get TCP data: {recieved_data}")
         print("--------------------------------------")
+        print("> Please wait 2 second...")
         print()
+        time.sleep(2)
         print("> Listening to SERIAL connection...")
-
+        
         return recieved_data
     
 
@@ -179,14 +183,22 @@ def read_serial_data():
                 print("> Reconnected serial port...")
 
             else:
-                serial_data = ser.readline().decode("utf-8") # DECODE BYTE STRING TO STRING
+
+
+                serial_data = ser.readline() # DECODE BYTE STRING TO STRING
+                serial_data = serial_data.decode('UTF-8')
+
+                
                
                 # IF GET SOME DATA, WAIT TCP DATA
                 if serial_data != '':
                     print("--------------------------------------")
                     print(f"> Serial Data: {serial_data}")
                     print("--------------------------------------")
+                    print("> Please wait 2 second...")
+                    time.sleep(2)
 
+                    
                     tcp_data = tcp_data_listener()
 
                     # CHECK FUNCTION
