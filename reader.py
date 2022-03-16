@@ -76,7 +76,7 @@ def tcp_data_listener():
     port = 6070
     
     print()
-    print("> Listening to tcp connection...")
+    print("> Listening to TCP connection...")
     
 
     # s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -93,15 +93,14 @@ def tcp_data_listener():
         s.connect((host, port))
         data = s.recv(1024)
         recieved_data = data.decode('utf-8')
-    print("--------------------------------------")
-    print(f"> Get TCP data: {recieved_data}")
-    print("--------------------------------------")
-    print()
-    print("> Listening to serial connection...")
+        print("--------------------------------------")
+        print(f"> Get TCP data: {recieved_data}")
+        print("--------------------------------------")
+        print()
+        print("> Listening to SERIAL connection...")
 
+        return recieved_data
     
-
-    return recieved_data
 
 
 
@@ -168,7 +167,7 @@ def read_serial_data():
     # SOCKET CONNECTION
     # con = socket_connect()
 
-    print("> Listening serial connection...")
+    print("> Listening SERIAL connection...")
 
     while(True):
         # try:
