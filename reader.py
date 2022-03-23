@@ -183,7 +183,6 @@ def main():
     serial_data = None
 
     while(True):
-<<<<<<< HEAD
         
         # READ TCP DATA
         tcp_data = read_tcp_data()
@@ -199,43 +198,6 @@ def main():
             print(colored("...CHECKING DATA IN MONGO DB...", 'magenta'))
             print("--------------------------------------")
             
-=======
-        # try:
-            if(ser == None):
-                ser = serial_connect()
-                print("> Reconnected serial port...")
-
-            else:
-
-
-                serial_data = ser.readline() # DECODE BYTE STRING TO STRING
-                serial_data = serial_data.decode('UTF-8')
-
-                
-               
-                # IF GET SOME DATA, WAIT TCP DATA
-                if serial_data != '':
-                    print("--------------------------------------")
-                    print(f"> Serial Data: {serial_data}")
-                    print("--------------------------------------")
-                    # print("> Please wait 2 second...")
-                    # time.sleep(2)
-                    
-                    tcp_data = tcp_data_listener()
-
-                    # CHECK FUNCTION
-                    # check_data_in_db(serial_data, tcp_data)
-
-        # except:
-        #     if(not(ser == None)):
-        #         ser.close()
-        #         ser = None
-        #         print("> Disconnecting serial port...")
-                
-                
-
-        #         send_email()
->>>>>>> 819331c9b38602395cdcd332e15f8e7abd085cea
 
                    
 
