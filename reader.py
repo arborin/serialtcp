@@ -91,19 +91,14 @@ def tcp_data_listener():
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((host, port))
-        s.sendall(b'Hi')
-        
+       
         data = s.recv(1024)
         recieved_data = data.decode('utf-8')
         
-        s.shutdown(socket.SHUT_RDWR)
-        s.close()
         print("--------------------------------------")
         print(f"> Get TCP data: {recieved_data}")
         print("--------------------------------------")
-        print("> Please wait 2 second...")
         print()
-        time.sleep(2)
         print("> Listening to SERIAL connection...")
         
         return recieved_data
@@ -195,9 +190,8 @@ def read_serial_data():
                     print("--------------------------------------")
                     print(f"> Serial Data: {serial_data}")
                     print("--------------------------------------")
-                    print("> Please wait 2 second...")
-                    time.sleep(2)
-
+                    # print("> Please wait 2 second...")
+                    # time.sleep(2)
                     
                     tcp_data = tcp_data_listener()
 
