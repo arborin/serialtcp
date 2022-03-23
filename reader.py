@@ -1,11 +1,10 @@
 # 
 # This is working version of script 
 # 
-# 1. you will get first USB Data
-# 2. then you will get TCP/IP Data
-# 3. cache usb data
-# 4. wait for tcp data
-# (time between it is maybe 1-3 seconds)
+# 1. get TCP/IP Data
+# 2. get USB Data
+# 3. check this data
+# 4. write data in db
 #
 
 import time
@@ -14,6 +13,7 @@ import socket
 import sys
 import os
 from pymongo import MongoClient
+from termcolor import colored
 
 
 
@@ -67,7 +67,7 @@ def send_email():
 
 
 
-def tcp_data_listener():
+def read_tcp_data():
     '''
         connect and listening ip:prot and receive tcp data
     '''
@@ -78,15 +78,6 @@ def tcp_data_listener():
     print()
     print("> Listening to TCP connection...")
     
-
-    # s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-    # s.connect((host, port))
-
-    # data = s.recv(1024)
-    # recieved_data = data.decode('utf-8')
-    # s.close()
-
     recieved_data = ''
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -99,16 +90,38 @@ def tcp_data_listener():
         s.shutdown(socket.SHUT_RDWR)
         s.close()
         print("--------------------------------------")
-        print(f"> Get TCP data: {recieved_data}")
+        print("Get TCP data: ", end="")
+        print(colored(recieved_data, 'green'))
         print("--------------------------------------")
-        print("> Please wait 2 second...")
         print()
-        time.sleep(2)
         print("> Listening to SERIAL connection...")
         
         return recieved_data
     
 
+def read_serial_data(ser):
+    
+    serial_data = ''
+    
+    while(True):
+        if(ser == None):
+            ser = serial_connect()
+            print("> Reconnected serial port...")
+        else:
+            serial_data = ser.readline() # DECODE BYTE STRING TO STRING
+            serial_data = serial_data.decode('UTF-8')
+
+            # IF GET SOME DATA, WAIT TCP DATA
+            if serial_data != '':
+                print("--------------------------------------")
+                print("> Serial Data: ", end='')
+                print(colored(serial_data, 'red'))
+                print("--------------------------------------")
+                break
+                
+    return serial_data
+                
+    
 
 
 def check_data_in_db(serial_data, tcp_data):
@@ -116,9 +129,9 @@ def check_data_in_db(serial_data, tcp_data):
     coll = db_connect()  # mongo db collection
 
     tcp_list = tcp_data.split("#")
+    
     print(tcp_list)
 
-    
     search_dict = {
             "PartNo": tcp_list[0], 
             "PartIndex": tcp_list[1], 
@@ -162,60 +175,34 @@ def check_data_in_db(serial_data, tcp_data):
    
 
 
-def read_serial_data():
+def main():
     '''
-        listening to serial port
-        main function loop
+        listening to tcp and serial port
     '''
 
-    # SERIAL CONNECTION
+    # CREATE SERIAL CONNECTION
     ser = serial_connect()
-
-    # SOCKET CONNECTION
-    # con = socket_connect()
-
-    print("> Listening SERIAL connection...")
+    tcp_data = None
+    serial_data = None
 
     while(True):
-        # try:
-            if(ser == None):
-                ser = serial_connect()
-                print("> Reconnected serial port...")
+        
+        # READ TCP DATA
+        tcp_data = read_tcp_data()
+        
+        if tcp_data != '':
+            # READ SERAIL DATA
+            serial_data = read_serial_data(ser)
+            
+        # CHECK DATA IN DB
+        if tcp_data != '' and serial_data != '':
+            print()
+            print("--------------------------------------")
+            print(colored("...CHECKING DATA IN MONGO DB...", 'magenta'))
+            print("--------------------------------------")
+            
 
-            else:
-
-
-                serial_data = ser.readline() # DECODE BYTE STRING TO STRING
-                serial_data = serial_data.decode('UTF-8')
-
-                
-               
-                # IF GET SOME DATA, WAIT TCP DATA
-                if serial_data != '':
-                    print("--------------------------------------")
-                    print(f"> Serial Data: {serial_data}")
-                    print("--------------------------------------")
-                    print("> Please wait 2 second...")
-                    time.sleep(2)
-
-                    
-                    tcp_data = tcp_data_listener()
-
-                    # CHECK FUNCTION
-                    # check_data_in_db(serial_data, tcp_data)
-
-        # except:
-        #     if(not(ser == None)):
-        #         ser.close()
-        #         ser = None
-        #         print("> Disconnecting serial port...")
-                
-                
-
-        #         send_email()
-
-        #     print("> No serial connection")
-        #     time.sleep(2)
+                   
 
 
 
@@ -223,7 +210,6 @@ if __name__ == "__main__":
     print("=======================================")
     print("> Script start")
     print("=======================================")
-    # FREE UP PORT IF IT IS ALREADY IN USE
 
-    read_serial_data()
+    main()
 
