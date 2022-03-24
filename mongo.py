@@ -6,11 +6,9 @@ from pymongo import MongoClient
 
 client = MongoClient('mongodb://192.168.1.50:27017/')
 
-print(client)
-
 db = client['learning']
 
-print(db)
+
 #Creating a collection
 coll = db['upwork']
 book = db['books']

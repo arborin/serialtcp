@@ -24,15 +24,17 @@ def serial_connect():
         serial port configuration
         this configuration will be move in config file
     '''
-
-    ser = serial.Serial(
-        port='/dev/ttyUSB0',
-        baudrate = 9600,
-        parity=serial.PARITY_NONE,
-        stopbits=serial.STOPBITS_ONE,
-        bytesize=serial.EIGHTBITS,
-        timeout=1
-    )
+    try:
+        ser = serial.Serial(
+            port='/dev/ttyUSB0',
+            baudrate = 9600,
+            parity=serial.PARITY_NONE,
+            stopbits=serial.STOPBITS_ONE,
+            bytesize=serial.EIGHTBITS,
+            timeout=1
+        )
+    except:
+        ser = None
 
     return ser
 
@@ -47,14 +49,20 @@ def db_connect():
     mongo_conn = 'mongodb://192.168.1.50:27017/'
     database = "learning"
     collection = "upwork"
-
-    client = MongoClient(mongo_conn)
-    db = client[database]
-    collection = db[collection]
-
-    print(f"> Database connection {db}")
     
-    return collection
+    result = ''
+    
+    try:
+        client = MongoClient(mongo_conn)
+        db = client[database]
+        result = db[collection]
+        
+        db.command("serverStatus")
+            
+    except:
+        result = 'error'
+    
+    return result
 
 
 
@@ -67,40 +75,52 @@ def send_email():
 
 
 
-def read_tcp_data():
+def read_tcp_data(connection_test = 0):
     '''
         connect and listening ip:prot and receive tcp data
     '''
 
-    host = "192.168.1.100" 
+    host = '192.168.1.100'
     port = 6070
-    
-    print()
-    print("> Listening to TCP connection...")
-    
     recieved_data = ''
+    
+    # THIS IS FOR TESTING CONNECTION 
+    if connection_test == 1:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(1.0)
+        try:
+            s.connect((host, port))
+            recieved_data = 'ok'
+        except:
+            recieved_data = 'error'
+    
+    else:
+    
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:                
+                s.connect((host, port))   
+                data = s.recv(1024)
+                recieved_data = data.decode('utf-8')
+                
+                print(colored(recieved_data, 'grey', 'on_green') , end='')
+                print(' ++ ', end='')
+                sys.stdout.flush()
 
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.connect((host, port))
-       
-        data = s.recv(1024)
-        recieved_data = data.decode('utf-8')
+            except:
+                recieved_data = 'error'
         
-        print("--------------------------------------")
-        print("Get TCP data: ", end="")
-        print(colored(recieved_data, 'green'))
-        print("--------------------------------------")
-        print()
-        print("> Listening to SERIAL connection...")
-        
-        return recieved_data
+    return recieved_data
     
 
 def read_serial_data(ser):
     
     serial_data = ''
     
+    # print()
+    # print('> Listening to SERIAL connection...')
+    
     while(True):
+        
         if(ser == None):
             ser = serial_connect()
             print("> Reconnected serial port...")
@@ -110,11 +130,19 @@ def read_serial_data(ser):
 
             # IF GET SOME DATA, WAIT TCP DATA
             if serial_data != '':
-                print("--------------------------------------")
-                print("> Serial Data: ", end='')
-                print(colored(serial_data, 'red'))
-                print("--------------------------------------")
+                
+                # print("--------------------------------------")
+                # print("> Serial Data: ", end='')
+                bg_color = 'on_green'
+                if 'ABBRUCH' in serial_data:
+                    bg_color = 'on_red'
+                
+                print(colored(serial_data, 'grey', bg_color))
+                # print("--------------------------------------")
                 break
+
+        # print("> No serial connection")
+
                 
     return serial_data
                 
@@ -184,6 +212,8 @@ def main():
 
     while(True):
         
+        print("Listening to TCP & USB data stream....")
+        
         # READ TCP DATA
         tcp_data = read_tcp_data()
         
@@ -194,11 +224,58 @@ def main():
         # CHECK DATA IN DB
         if tcp_data != '' and serial_data != '':
             print()
-            print("--------------------------------------")
-            print(colored("...CHECKING DATA IN MONGO DB...", 'magenta'))
-            print("--------------------------------------")
+            print(colored("DB OK", 'grey', 'on_green'))
+            print()
             
 
+def print_color_codes():
+
+    print("---------------------------------------")
+    print(colored("Color-codes:", attrs=['bold']))
+    print(colored(" Green  ", "grey", "on_green") + ": Data OK")
+    print(colored(" Red    ", "grey", "on_red") + ": Screwing error")
+    print(colored(" Blue   ", "grey", "on_blue") + ": TCP/IP error")
+    print(colored(" Yellow ", "grey", "on_yellow") + ": MongoDB error")
+    print("---------------------------------------")
+    
+    
+
+def check_connections():
+    
+    # CHECK SERIAL CONNECTION AND PRINT STATUS
+    ser = serial_connect()
+    serial_status = " OK "
+    serial_bg = "on_green" 
+    
+    if ser == None:
+        serial_status = " NOK "
+        serial_bg = "on_red"
+        
+    print("> USB connection:\t" + colored(serial_status, 'grey', serial_bg))
+    
+    # CHECK TCP CONNECTION AND PRINT STATUS
+    tcp_status = " OK "
+    tcp_bg = "on_green" 
+    
+    tcp_data = read_tcp_data(connection_test=1)
+
+    if tcp_data == 'error':
+        tcp_status = " NOK "
+        tcp_bg = "on_red" 
+    
+    print("> TCP/IP connection:\t" + colored(tcp_status, 'grey', tcp_bg))
+    
+    # DATABSE CONNECTION
+    db_result = db_connect()
+    db_status = " OK "
+    db_bg = "on_green" 
+    if db_result == 'error':
+        db_status = " NOK "
+        db_bg = "on_red" 
+    
+    print("> DB connection:\t" + colored(db_status, 'grey', db_bg))
+        
+    
                    
 
 
@@ -207,6 +284,10 @@ if __name__ == "__main__":
     print("=======================================")
     print("> Script start")
     print("=======================================")
-
+    
+    check_connections()
+    
+    print_color_codes()
+    
     main()
 
