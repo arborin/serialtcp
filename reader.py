@@ -17,8 +17,6 @@ from termcolor import colored
 
 
 
-
-
 def serial_connect():
     '''
         serial port configuration
@@ -66,15 +64,6 @@ def db_connect():
 
 
 
-def send_email():
-    '''
-        email sending
-    '''
-    print("> SNED EMAIL ALERT")
-
-
-
-
 def read_tcp_data(connection_test = 0):
     '''
         connect and listening ip:prot and receive tcp data
@@ -102,7 +91,18 @@ def read_tcp_data(connection_test = 0):
                 data = s.recv(1024)
                 recieved_data = data.decode('utf-8')
                 
-                print(colored(recieved_data, 'grey', 'on_green') , end='')
+                data_length = len(recieved_data.split('#'))
+                
+                bg_color = 'on_green'
+                message = recieved_data
+                
+                if data_length != 7: 
+                    bg_color = 'on_blue'
+                    message = "NO READ"
+                    recieved_data = 'error'
+                    
+                
+                print(colored(message, 'grey', bg_color) , end='')
                 print(' ++ ', end='')
                 sys.stdout.flush()
 
@@ -115,70 +115,77 @@ def read_tcp_data(connection_test = 0):
 def read_serial_data(ser):
     
     serial_data = ''
-    
-    # print()
-    # print('> Listening to SERIAL connection...')
-    
+        
     while(True):
         
-        if(ser == None):
-            ser = serial_connect()
-            print("> Reconnected serial port...")
-        else:
-            serial_data = ser.readline() # DECODE BYTE STRING TO STRING
-            serial_data = serial_data.decode('UTF-8')
+        try:
+            if(ser == None):
+                ser = serial_connect()
+                time.sleep(1.0)
+            else:
+                serial_data = ser.readline() # DECODE BYTE STRING TO STRING
+                serial_data = serial_data.decode('UTF-8')
 
-            # IF GET SOME DATA, WAIT TCP DATA
-            if serial_data != '':
-                
-                # print("--------------------------------------")
-                # print("> Serial Data: ", end='')
-                bg_color = 'on_green'
-                if 'ABBRUCH' in serial_data:
-                    bg_color = 'on_red'
-                
-                print(colored(serial_data, 'grey', bg_color))
-                # print("--------------------------------------")
-                break
-
-        # print("> No serial connection")
-
-                
+                # IF GET SOME DATA, WAIT TCP DATA
+                if serial_data != '':
+                    
+                    bg_color = 'on_green'
+                    message = serial_data
+                    
+                    if 'ABBRUCH' in serial_data:
+                        bg_color = 'on_red'
+                    
+                    if len(serial_data.split(" ")) < 9:
+                        bg_color = 'on_red'
+                        message = "NO READ"
+                        serial_data = 'error' # it is return value for checking
+                        
+                        
+                    print(colored(message, 'grey', bg_color))
+                    
+                    break
+                    
+        except Exception as e:
+            if(not(ser == None)):
+                ser.close()
+                ser = None
+                print("> Disconnecting serial port...")
+                print(e)
+            break
+                                
     return serial_data
                 
     
+def send_email():
+    '''
+        email sending
+    '''
+    print("> SNED EMAIL ALERT")
+    
+    
 
-
-def check_data_in_db(serial_data, tcp_data):
+def update_data_in_db(serial_data, tcp_data):
 
     coll = db_connect()  # mongo db collection
 
     tcp_list = tcp_data.split("#")
+    # EXAMPLE
+    # ['', 'N01HHAR2502301', 'Ca', '131945', 'T04222', 'S0002130', 'N01']
     
-    print(tcp_list)
-
     search_dict = {
-            "PartNo": tcp_list[0], 
-            "PartIndex": tcp_list[1], 
-            "SupplierID": int(tcp_list[2]), 
-            "ManfDay": tcp_list[3],
-            "SerialNo": tcp_list[4],
-            "Cavity": tcp_list[5]
+            "PartNo": tcp_list[1], 
+            "PartIndex": tcp_list[2], 
+            "SupplierID": int(tcp_list[3]), 
+            "ManfDay": tcp_list[4],
+            "SerialNo": tcp_list[5],
+            "Cavity": tcp_list[6]
     }
-
-    print(search_dict)
 
     search_result = coll.find_one(search_dict)
 
-    print("==============================================")
-    print(f"> SERIAL DATA: {serial_data}")
-    print(f"> TCP DATA:    {tcp_data}")
-    print("==============================================")
-    print(f"> Database search result: {search_result}")
-    print("==============================================")
     if search_result:
         update_vals = serial_data.split(" ")
-        print(f"> update data {update_vals}")        
+         
         # example of update_vals = ['09.03.2022', '10:22:58', 'PG:', '11', 'TQ:', '3.81', 'Nm', 'AN:', '1215', 'Grad', 'IO'] 
         
         # get keys and values will be next elements in list
@@ -186,47 +193,21 @@ def check_data_in_db(serial_data, tcp_data):
 
         for key in values.keys():
             try:
-                index = update_vals.index(key+":") # GET key index
+                index = update_vals.index(key+":") # get key index
                 values[key] = update_vals[index+1] # index+1 will be value of this key
             except:
-                print("key not found")
+                pass
+        
+        values['date'] = update_vals[0]
+        values['time'] = update_vals[1]
+        # CREATE STRING COMMENT FROM LIST
+        values['comment'] = " ".join(update_vals[9:])
         
         # update existing value list
-        values.update(search_result['Measurement_Values'])
-        print(values)
+        # values.update(search_result['Measurement_Values'])
+        # print(values)
         coll.update_one(search_dict, { "$set": { "Measurement_Values":  values }})
 
-
-   
-
-
-def main():
-    '''
-        listening to tcp and serial port
-    '''
-
-    # CREATE SERIAL CONNECTION
-    ser = serial_connect()
-    tcp_data = None
-    serial_data = None
-
-    while(True):
-        
-        print("Listening to TCP & USB data stream....")
-        
-        # READ TCP DATA
-        tcp_data = read_tcp_data()
-        
-        if tcp_data != '':
-            # READ SERAIL DATA
-            serial_data = read_serial_data(ser)
-            
-        # CHECK DATA IN DB
-        if tcp_data != '' and serial_data != '':
-            print()
-            print(colored("DB OK", 'grey', 'on_green'))
-            print()
-            
 
 def print_color_codes():
 
@@ -242,7 +223,7 @@ def print_color_codes():
 
 def check_connections():
     
-    # CHECK SERIAL CONNECTION AND PRINT STATUS
+    # 1. CHECK SERIAL CONNECTION AND PRINT STATUS
     ser = serial_connect()
     serial_status = " OK "
     serial_bg = "on_green" 
@@ -253,29 +234,74 @@ def check_connections():
         
     print("> USB connection:\t" + colored(serial_status, 'grey', serial_bg))
     
-    # CHECK TCP CONNECTION AND PRINT STATUS
+    # 2. CHECK TCP CONNECTION AND PRINT STATUS
+    tcp_data = read_tcp_data(connection_test=1)
     tcp_status = " OK "
     tcp_bg = "on_green" 
     
-    tcp_data = read_tcp_data(connection_test=1)
-
     if tcp_data == 'error':
         tcp_status = " NOK "
         tcp_bg = "on_red" 
     
     print("> TCP/IP connection:\t" + colored(tcp_status, 'grey', tcp_bg))
     
-    # DATABSE CONNECTION
+    # 3. DATABSE CONNECTION
     db_result = db_connect()
     db_status = " OK "
     db_bg = "on_green" 
+    
     if db_result == 'error':
         db_status = " NOK "
         db_bg = "on_red" 
     
     print("> DB connection:\t" + colored(db_status, 'grey', db_bg))
-        
     
+    result = 'ok'
+    
+    if serial_status == ' NOK ' or tcp_status == ' NOK ' or db_status == ' NOK ':
+        result = 'error'
+    
+    return result
+        
+
+
+def main():
+    '''
+        listening to tcp and serial port
+    '''
+
+    # CREATE SERIAL CONNECTION
+    ser = serial_connect()
+    tcp_data = None
+    serial_data = None
+    
+    print("Listening to TCP & USB data stream....")
+
+    while(True):
+        
+        try:
+            # READ TCP DATA
+            try:
+                tcp_data = read_tcp_data()
+            except:
+                print("Serial connection failed")
+            
+            if tcp_data != '':
+                # READ SERAIL DATA
+                serial_data = read_serial_data(ser)
+                
+            # CHECK DATA IN DB
+            if serial_data != '' and serial_data != 'error' and tcp_data != 'error':
+                update_data_in_db(serial_data, tcp_data)
+                # THIS MESSAGE MUST DEPEND ON DB UPDATE OR NOT
+                print(colored("DB OK", 'grey', 'on_green'))
+            
+        except KeyboardInterrupt:
+            print()
+            print("=======================================")
+            print("> Script end")
+            print("=======================================")
+            sys.exit()
                    
 
 
@@ -285,9 +311,13 @@ if __name__ == "__main__":
     print("> Script start")
     print("=======================================")
     
-    check_connections()
-    
-    print_color_codes()
-    
-    main()
+    result = check_connections()
+        
+    if result == 'ok':
+        print_color_codes()
+        
+        main()
+    else:
+        print(colored('\nConnection check failed...\n', 'red'))
+        
 
