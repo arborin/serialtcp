@@ -59,7 +59,12 @@ class SerialConnector:
                 if(self.ser == None):
                     self.ser = self.connect()
                     time.sleep(1.0)
-                else:
+                    # CHECK IT AGAIN
+                    if(self.ser == None):
+                        print(colored(f" Read Failed: {self.port} ", 'grey', 'on_red'))
+                        break
+        
+                if self.ser:
                     serial_data = self.ser.readline() # DECODE BYTE STRING TO STRING
                     serial_data = serial_data.decode('UTF-8')
 
@@ -85,8 +90,8 @@ class SerialConnector:
                 if(not(self.ser == None)):
                     self.ser.close()
                     self.ser = None
-                    print("> Disconnecting serial port...")
-                    print(e)
+                    print(colored(f" Read Failed: {self.port} ", 'grey', 'on_red'))
+                    # print(e)
                 break
                                     
         return serial_data
@@ -345,7 +350,7 @@ if __name__ == "__main__":
     
     # True - write data in database
     # False - don't data in database
-    write_db = True
+    write_db = False
     
     # END CONFIGURATION
     #=====================================
