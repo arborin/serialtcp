@@ -11,9 +11,11 @@ import time
 import serial
 import socket
 import sys
-import os
+import smtplib
 from pymongo import MongoClient
 from termcolor import colored
+from datetime import datetime
+from email.mime.text import MIMEText
 
 
 
@@ -216,6 +218,46 @@ class Db:
             # print(values)
             self.coll.update_one(search_dict, { "$set": { "Measurement_Values":  values }})
 
+
+
+class Email:
+    
+    def __init__(self, smtp_server, smtp_port, smtp_user, smtp_pass):
+        
+        self.smtp_server = smtp_server
+        self.smtp_port = smtp_port
+        self.smtp_user = smtp_user
+        self.smtp_pass = smtp_pass
+        
+    def set_mail_data(self, sender, receiver, subject, message):
+        self.sender = sender
+        self.receiver = receiver
+        self.subject = subject
+        self.message = message
+    
+    
+    def send_email(self):
+        # DONT MAKE IDENTATION 
+        msg = MIMEText(self.message)
+        msg['Subject'] = self.subject
+        msg['From'] = self.sender
+        msg['To'] = self.receiver
+        
+        with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
+            server.login(self.smtp_user, self.smtp_pass)
+            server.sendmail(self.sender, self.receiver, msg.as_string())
+            
+    
+    def test_email(self):
+        result = 'ok'
+        try:
+            with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
+                server.login(self.smtp_user, self.smtp_pass)
+        except:
+            result = 'error'
+        
+        return result
+
               
     
   
@@ -234,7 +276,7 @@ def print_color_codes():
     
     
 
-def check_connections(ser, tcp_con, db):
+def check_connections(ser, tcp_con, db, email):
     
     # 1. CHECK SERIAL CONNECTION AND PRINT STATUS
     serial_status = "OK"
@@ -272,16 +314,30 @@ def check_connections(ser, tcp_con, db):
         print("> DB connection:\t" + colored(f" {db_status} ", 'grey', db_bg))
         
     
+    # 4. EMAIL CONNECTION
+    email_status = "OK"
+    email_bg = "on_green"
+    
+    if email is not None:
+        email_result = email.test_email()
+        
+        if email_result == 'error':
+            email_status = "NOK"
+            email_bg = "on_red" 
+        
+        print("> Email Login:\t\t" + colored(f" {email_status} ", 'grey', email_bg))
+        
+    
     result = 'ok'
         
-    if serial_status == 'NOK' or tcp_status == 'NOK' or db_status == 'NOK':
+    if serial_status == 'NOK' or tcp_status == 'NOK' or db_status == 'NOK' or email_status == 'NOK':
         result = 'error'
     
     return result
         
 
 
-def main(ser, tcp_con, db, write_db):
+def main(ser, tcp_con, db, email):
     '''
         listening to tcp and serial port
     '''
@@ -293,6 +349,8 @@ def main(ser, tcp_con, db, write_db):
     
     print_color_codes()
     
+    # COUNTING ERRORS 
+    error_data = {'count': 0, 'time': ''}
     
     
     print("Listening to TCP & USB data stream....")
@@ -310,12 +368,35 @@ def main(ser, tcp_con, db, write_db):
             # CHECK DATA IN DB
             if serial_data != '' and serial_data != 'error' and tcp_data != 'error':
                 
-                if write_db:
+                if db:
                     # UPDATE DATA IN DB
                     db.update_data_in_db(serial_data, tcp_data)
                     
                     # THIS MESSAGE MUST DEPEND ON DB UPDATE OR NOT
-                    print(colored(" DB OK ", 'grey', 'on_green'))
+                    print(colored(' DB OK ', 'grey', 'on_green'))
+            
+            # GET ERROR MESSAGE
+            else:
+                error_data['count'] += 1
+                
+                # IF FIRST ERROR SAVE TIME
+                if error_data['count'] == 1:
+                    error_data['time'] = datetime.now()
+                
+                # CHECK TIMEDELTA
+                time_delta_min = int((datetime.now() - error_data['time']).total_seconds() / 60)
+                
+                # IF IN 5 MUNUTE OCCURED 3 ERROR
+                if time_delta_min <= 5 and error_data['count'] >= 3:
+                    if email:
+                        try:
+                            email.send_email()
+                            error_data['count'] = 0
+                            print(colored(' Email Sent ', 'grey', 'on_green'))
+                        except:
+                            print(colored(' Email not send ', 'grey', 'on_red'))
+                    
+                    
             
         except KeyboardInterrupt:
             print()
@@ -348,9 +429,24 @@ if __name__ == "__main__":
     database = "learning"
     collection = "upwork"
     
+    # EMAIL CONFIG
+    smtp_server = "smtp.mailtrap.io"
+    smtp_port = 2525
+    smtp_user = "f69396842d193f"
+    smtp_pass = "c831385ef5eec6"
+    #
+    sender = "nika.kobaidze@gmail.com"
+    receiver = "revievermail@gmail.com"
+    subject = "Alert"
+    message = "Can not read data"
+    
     # True - write data in database
     # False - don't data in database
     write_db = False
+    
+    # True - send email
+    # False - don't send email
+    send_email = True
     
     # END CONFIGURATION
     #=====================================
@@ -366,14 +462,20 @@ if __name__ == "__main__":
     if write_db:
         db = Db(mongo_conn, database, collection)
     
+    email = None
+    if send_email:
+        email = Email(smtp_server, smtp_port, smtp_user, smtp_pass)
+        email.set_mail_data(sender, receiver, subject, message)
+    
+    
     # CONNECTION RESULT
-    result = check_connections(serial_con, tcp_con, db)
+    result = check_connections(serial_con, tcp_con, db, email)
     
     # IF ALL CONNECTIONS ARE OK
     if result == 'ok':
                 
         # RUN MAIN LOOP
-        main(serial_con, tcp_con, db, write_db)
+        main(serial_con, tcp_con, db, email)
     else:
         print(colored("---------------------------------------", 'red'))
         print(colored('> Connection check failed...', 'red'))
