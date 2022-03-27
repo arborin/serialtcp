@@ -53,7 +53,7 @@ class SerialConnector:
             reads and print data from serial port
         '''
     
-        serial_data = ''
+        serial_data = 'error'
             
         while(True):
             
