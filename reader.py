@@ -42,9 +42,15 @@ class SerialConnector:
                 bytesize=serial.EIGHTBITS,
                 timeout=1
             )
+            
+            # self.ser.open()
         except:
+            print("SERIAL ERROR")
             self.ser = None
 
+        return self.ser
+    
+    def serial_test(self):
         return self.ser
     
       
@@ -283,7 +289,7 @@ def check_connections(ser, tcp_con, db, email):
     serial_status = "OK"
     serial_bg = "on_green" 
     
-    if ser == None:
+    if ser.serial_test() is None:
         serial_status = "NOK"
         serial_bg = "on_red"
         
@@ -343,8 +349,6 @@ def main(ser, tcp_con, db, email):
         listening to tcp and serial port
     '''
 
-    # CREATE SERIAL CONNECTION
-    # ser = serial_connect()
     tcp_data = None
     serial_data = None
     
