@@ -68,7 +68,8 @@ class SerialConnector:
         
                 if self.ser:
                     serial_data = self.ser.readline() # DECODE BYTE STRING TO STRING
-                    serial_data = serial_data.decode('UTF-8')
+                    serial_data = serial_data.decode('UTF-8').strip()
+                    
 
                     # IF GET SOME DATA, WAIT TCP DATA
                     if serial_data != '':
@@ -125,7 +126,7 @@ class TcpConnector:
             try:               
                 s.connect((self.host, self.port))   
                 data = s.recv(1024)
-                recieved_data = data.decode('utf-8')
+                recieved_data = data.decode('utf-8').strip()
                 
                 # CALCULATE DATA LENGTH
                 data_length = len(recieved_data.split('#'))
