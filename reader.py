@@ -134,6 +134,9 @@ class TcpConnector:
                 data = s.recv(1024)
                 recieved_data = data.decode('utf-8').strip()
                 
+                # EXAMPLE
+                # ['', 'N01HHAR2502301', 'Ca', '131945', 'T04222', 'S0002130', 'N01']
+                
                 # CALCULATE DATA LENGTH
                 data_length = len(recieved_data.split('#'))
                 
@@ -142,8 +145,8 @@ class TcpConnector:
                 
                 if data_length != 7: 
                     bg_color = 'on_blue'
-                    message = "NO READ"
-                    recieved_data = 'error'
+                    # message = "NO READ"
+                    # recieved_data = 'error'
                     
             
                 print(colored(f" {message} ", 'grey', bg_color) , end='')
