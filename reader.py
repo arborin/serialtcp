@@ -74,7 +74,7 @@ class SerialConnector:
         
                 if self.ser:
                     serial_data = self.ser.readline() # DECODE BYTE STRING TO STRING
-                    serial_data = serial_data.decode('UTF-8').strip()
+                    serial_data = serial_data.decode('UTF-8').strip().replace("\r\n","")
                     
 
                     # IF GET SOME DATA, WAIT TCP DATA
@@ -132,7 +132,7 @@ class TcpConnector:
             try:               
                 s.connect((self.host, self.port))   
                 data = s.recv(1024)
-                recieved_data = data.decode('utf-8').strip()
+                recieved_data = data.decode('utf-8').strip().replace("\r\n","")
                 
                 # EXAMPLE
                 # ['', 'N01HHAR2502301', 'Ca', '131945', 'T04222', 'S0002130', 'N01']
@@ -147,11 +147,12 @@ class TcpConnector:
                     bg_color = 'on_blue'
                     # message = "NO READ"
                     # recieved_data = 'error'
-                    
             
-                print(colored(f" {message} ", 'grey', bg_color) , end='')
-                print(' ++ ', end='')
-                sys.stdout.flush()
+                # IF RECEIVED DATA IS NOT EMPTY LINE PRINT THIS LINE
+                if recieved_data != '':
+                    print(colored(f" {message} ", 'grey', bg_color) , end='')
+                    print(colored(' ++ ', 'blue', 'on_white'), end='')
+                    sys.stdout.flush()
 
             except:
                 recieved_data = 'error'
