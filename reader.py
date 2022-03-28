@@ -73,11 +73,11 @@ class SerialConnector:
                     # IF GET SOME DATA, WAIT TCP DATA
                     if serial_data != '':
                         
-                        bg_color = 'on_green'
+                        bg_color = 'on_red'
                         message = serial_data
                         
-                        if 'ABBRUCH' in serial_data:
-                            bg_color = 'on_red'
+                        if 'Grad IO' in serial_data:
+                            bg_color = 'on_green'
                         
                         if len(serial_data.split(" ")) < 9:
                             bg_color = 'on_red'
