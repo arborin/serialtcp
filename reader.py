@@ -229,6 +229,10 @@ class Db:
             # values.update(search_result['Measurement_Values'])
             # print(values)
             self.coll.update_one(search_dict, { "$set": { "Measurement_Values":  values }})
+        
+        else:
+            # DATA NOT FOUND IN DB
+            print(colored(' No entry in DB found ', 'grey', 'on_yellow'))
 
 
 
