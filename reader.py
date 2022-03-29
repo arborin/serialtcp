@@ -83,7 +83,7 @@ class SerialConnector:
                         bg_color = 'on_red'
                         message = serial_data
                         
-                        if 'Grad IO' in serial_data:
+                        if 'Grad  IO' in serial_data:
                             bg_color = 'on_green'
                         
                         if len(serial_data.split(" ")) < 9:
@@ -135,7 +135,8 @@ class TcpConnector:
                 recieved_data = data.decode('utf-8').strip().replace("\r\n","")
                 
                 # EXAMPLE
-                # ['', 'N01HHAR2502301', 'Ca', '131945', 'T04222', 'S0002130', 'N01']
+                # HHAR2502301##Ca##131945##T04222##S0002129##N01
+                # ['N01HHAR2502301', 'Ca', '131945', 'T04222', 'S0002130', 'N01']
                 
                 # CALCULATE DATA LENGTH
                 data_length = len(recieved_data.split('#'))
@@ -143,10 +144,10 @@ class TcpConnector:
                 bg_color = 'on_green'
                 message = recieved_data
                 
-                if data_length != 7: 
+                if data_length != 6: 
                     bg_color = 'on_blue'
-                    # message = "NO READ"
-                    # recieved_data = 'error'
+                    message = "NO READ"
+                    recieved_data = 'error'
             
                 # IF RECEIVED DATA IS NOT EMPTY LINE PRINT THIS LINE
                 if recieved_data != '':
@@ -191,15 +192,15 @@ class Db:
 
         tcp_list = tcp_data.split("#")
         # EXAMPLE
-        # ['', 'N01HHAR2502301', 'Ca', '131945', 'T04222', 'S0002130', 'N01']
+        # ['N01HHAR2502301', 'Ca', '131945', 'T04222', 'S0002130', 'N01']
         
         search_dict = {
-                "PartNo": tcp_list[1], 
-                "PartIndex": tcp_list[2], 
-                "SupplierID": int(tcp_list[3]), 
-                "ManfDay": tcp_list[4],
-                "SerialNo": tcp_list[5],
-                "Cavity": tcp_list[6]
+                "PartNo": tcp_list[0], 
+                "PartIndex": tcp_list[1], 
+                "SupplierID": int(tcp_list[2]), 
+                "ManfDay": tcp_list[3],
+                "SerialNo": tcp_list[4],
+                "Cavity": tcp_list[5]
         }
 
         search_result = self.coll.find_one(search_dict)
