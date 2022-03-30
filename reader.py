@@ -387,7 +387,7 @@ def main(ser, tcp_con, db, email):
                     db.update_data_in_db(serial_data, tcp_data)
                     
                     # THIS MESSAGE MUST DEPEND ON DB UPDATE OR NOT
-                    print(colored(' DB OK ', 'grey', 'on_green'))
+                    # print(colored(' DB OK ', 'grey', 'on_green'))
             
             # GET ERROR MESSAGE
             else:
