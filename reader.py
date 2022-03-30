@@ -230,7 +230,7 @@ class Db:
 
             
             # CREATE STRING COMMENT FROM LIST
-            values['Comment'] = " ".join(update_vals[9:])
+            values['Comment'] = " ".join(update_vals[6:])
             
             # update existing value list
             # values.update(search_result['Measurement_Values'])

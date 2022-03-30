@@ -22,7 +22,7 @@ for data in update_vals:
     elif "AN:" in data:
         values['AN'] = data.split(":")[-1]
         
-        
+values['Comment'] = " ".join(update_vals[6:])
 
 print(values)
         
