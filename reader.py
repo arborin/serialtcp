@@ -208,22 +208,29 @@ class Db:
         if search_result:
             update_vals = serial_data.split(" ")
             
-            # example of update_vals = ['09.03.2022', '10:22:58', 'PG:', '11', 'TQ:', '3.81', 'Nm', 'AN:', '1215', 'Grad', 'IO'] 
-            
+            # STRING EXAMPLE  30.03.2022 12:15:53 PG:11 TQ:0.03 Nm AN:1861 Grad ABBRUCH
+            #                 ['30.03.2022', '12:15:53', 'PG:11', 'TQ:0.03', 'Nm', 'AN:1861', 'Grad', 'ABBRUCH']
+            # STRING EXAMPLE  30.03.2022 12:15:49 PG:11 TQ:3.49 Nm AN:10 Grad IO
+            #                 ['30.03.2022', '12:15:49', 'PG:11', 'TQ:3.49', 'Nm', 'AN:10', 'Grad', 'IO']
+                        
             # get keys and values will be next elements in list
-            values = {"PG": '', "TQ": '', "AN": ''}
+            values = {}
 
-            for key in values.keys():
-                try:
-                    index = update_vals.index(key+":") # get key index
-                    values[key] = update_vals[index+1] # index+1 will be value of this key
-                except:
-                    pass
-            
             values['Date'] = update_vals[0]
             values['Time'] = update_vals[1]
+            
+            for data in update_vals:
+                if "PG:" in data:
+                    values['PG'] = data.split(":")[-1]
+                elif "TQ:" in data:
+                    values['TQ'] = data.split(":")[-1]
+                elif "AN:" in data:
+                    values['AN'] = data.split(":")[-1]
+                
+
+            
             # CREATE STRING COMMENT FROM LIST
-            values['Comment'] = " ".join(update_vals[9:])
+            values['Comment'] = " ".join(update_vals[6:])
             
             # update existing value list
             # values.update(search_result['Measurement_Values'])
@@ -387,7 +394,7 @@ def main(ser, tcp_con, db, email):
                     db.update_data_in_db(serial_data, tcp_data)
                     
                     # THIS MESSAGE MUST DEPEND ON DB UPDATE OR NOT
-                    print(colored(' DB OK ', 'grey', 'on_green'))
+                    # print(colored(' DB OK ', 'grey', 'on_green'))
             
             # GET ERROR MESSAGE
             else:
@@ -431,36 +438,79 @@ if __name__ == "__main__":
     # ====================================
     
     # TCP CONNECTION
-    host = '192.168.1.100'
-    tcp_port = 6070
     
-    # SERIAL CONNECTION
-    serial_port='/dev/ttyUSB0'
-    baudrate=9600
+    try:
+        conf = sys.argv[1]
+    except:
+        conf = 'prod'
+
+
+    if conf == 'dev':
+        # NIKA
+        host = '192.168.1.100'
+        tcp_port = 6070
+        
+        # SERIAL CONNECTION
+        serial_port='/dev/ttyUSB0'
+        baudrate=9600
+        
+        # DB CONNECTION
+        mongo_conn = 'mongodb://192.168.1.50:27017/'
+        database = "learning"
+        collection = "upwork"
+        
+        # EMAIL CONFIG
+        smtp_server = "smtp.mailtrap.io"
+        smtp_port = 2525
+        smtp_user = "f69396842d193f"
+        smtp_pass = "c831385ef5eec6"
+        #
+        sender = "nika.kobaidze@gmail.com"
+        receiver = "revievermail@gmail.com"
+        subject = "Alert"
+        message = "Can not read data"
     
-    # DB CONNECTION
-    mongo_conn = 'mongodb://192.168.1.50:27017/'
-    database = "learning"
-    collection = "upwork"
+        # True - write data in database
+        # False - don't data in database
+        write_db = False
+        
+        # True - send email
+        # False - don't send email
+        send_email = True
     
-    # EMAIL CONFIG
-    smtp_server = "smtp.mailtrap.io"
-    smtp_port = 2525
-    smtp_user = "f69396842d193f"
-    smtp_pass = "c831385ef5eec6"
-    #
-    sender = "nika.kobaidze@gmail.com"
-    receiver = "revievermail@gmail.com"
-    subject = "Alert"
-    message = "Can not read data"
-    
-    # True - write data in database
-    # False - don't data in database
-    write_db = False
-    
-    # True - send email
-    # False - don't send email
-    send_email = True
+    elif conf == 'prod':
+        # MARCO
+        # TCP CONNECTION
+        host = '192.168.100.133'
+        tcp_port = 20371
+        
+        # SERIAL CONNECTION
+        serial_port='/dev/ttyUSB0'
+        baudrate=9600
+        
+        # DB CONNECTION
+        mongo_conn = 'mongodb://192.168.100.23:27017/'
+        database = ""
+        collection = ""
+        
+        # EMAIL CONFIG
+        smtp_server = "192.168.100.20"
+        smtp_port = 25
+        smtp_user = ""
+        smtp_pass = ""
+        #
+        sender = ""
+        receiver = "e"
+        subject = "Alert Verschraubung"
+        message = "Can not read data"
+        
+        # True - write data in database
+        # False - don't data in database
+        write_db = True
+        
+        # True - send email
+        # False - don't send email
+        send_email =  False
     
     # END CONFIGURATION
     #=====================================
