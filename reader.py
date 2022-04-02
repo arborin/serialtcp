@@ -50,6 +50,7 @@ class SerialConnector:
 
         return self.ser
     
+    
     def serial_test(self):
         return self.ser
     
@@ -86,7 +87,7 @@ class SerialConnector:
                         if 'Grad  IO' in serial_data:
                             bg_color = 'on_green'
                         
-                        if len(serial_data.split(" ")) < 9:
+                        if len(serial_data.split(" ")) < 9 or 'undefined' in serial_data:
                             bg_color = 'on_red'
                             message = "NO READ"
                             serial_data = 'error' # it is return value for checking
@@ -357,10 +358,24 @@ def check_connections(ser, tcp_con, db, email):
         result = 'error'
     
     return result
+    
+
+def check_error_data(get_data, error_data):
+    if get_data == 'error':
+        error_data['count'] += 1
+    
+    if error_data['count'] == 1:
+        error_data['time'] = datetime.now()
+    
+    return error_data
+    
+    
+        
+    
         
 
 
-def main(ser, tcp_con, db, email):
+def main(ser, tcp_con, db, email, error_frequency, error_time_period):
     '''
         listening to tcp and serial port
     '''
@@ -381,11 +396,31 @@ def main(ser, tcp_con, db, email):
         try:
             # READ TCP DATA
             tcp_data = tcp_con.read_tcp_data()
-
+            # CHECK TCP DATA
+            error_data = check_error_data(tcp_data, error_data)
+            
+            
             if tcp_data != '':
                 # READ SERAIL DATA
                 serial_data = ser.read_serial_data()
+                # CHECK SERIAL DATA
+                error_data = check_error_data(serial_data, error_data)
+            
+            
+            if error_data['count'] >= error_frequency:
+                time_delta_min = int((datetime.now() - error_data['time']).total_seconds() / 60)
                 
+                # IF IN 5 MUNUTE OCCURED 3 ERROR
+                if time_delta_min <= error_time_period:
+                    if email:
+                        try:
+                            email.send_email()
+                            error_data['count'] = 0
+                            print(colored(' Email Sent ', 'grey', 'on_green'))
+                        except:
+                            print(colored(' Email not send ', 'grey', 'on_red'))
+            
+            
             # CHECK DATA IN DB
             if serial_data != '' and serial_data != 'error' and tcp_data != 'error':
                 
@@ -397,25 +432,8 @@ def main(ser, tcp_con, db, email):
                     # print(colored(' DB OK ', 'grey', 'on_green'))
             
             # GET ERROR MESSAGE
-            else:
-                error_data['count'] += 1
+
                 
-                # IF FIRST ERROR SAVE TIME
-                if error_data['count'] == 1:
-                    error_data['time'] = datetime.now()
-                
-                # CHECK TIMEDELTA
-                time_delta_min = int((datetime.now() - error_data['time']).total_seconds() / 60)
-                
-                # IF IN 5 MUNUTE OCCURED 3 ERROR
-                if time_delta_min <= 5 and error_data['count'] >= 3:
-                    if email:
-                        try:
-                            email.send_email()
-                            error_data['count'] = 0
-                            print(colored(' Email Sent ', 'grey', 'on_green'))
-                        except:
-                            print(colored(' Email not send ', 'grey', 'on_red'))
                     
                     
             
@@ -477,6 +495,11 @@ if __name__ == "__main__":
         # True - send email
         # False - don't send email
         send_email = True
+        
+        # ERROR FREQUENCY 
+        error_frequency = 3
+        # ERROR TIME PERIOD in MINUTE
+        error_time_period = 5
     
     elif conf == 'prod':
         # MARCO
@@ -511,6 +534,11 @@ if __name__ == "__main__":
         # True - send email
         # False - don't send email
         send_email =  False
+        
+         # ERROR FREQUENCY 
+        error_frequency = 3
+        # ERROR TIME PERIOD in MINUTE
+        error_time_period = 5
     
     # END CONFIGURATION
     #=====================================
@@ -539,7 +567,7 @@ if __name__ == "__main__":
     if result == 'ok':
                 
         # RUN MAIN LOOP
-        main(serial_con, tcp_con, db, email)
+        main(serial_con, tcp_con, db, email, error_frequency, error_time_period)
     else:
         print(colored("---------------------------------------", 'red'))
         print(colored('> Connection check failed...', 'red'))
