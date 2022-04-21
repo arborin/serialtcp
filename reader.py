@@ -91,11 +91,21 @@ class SerialConnector:
                             bg_color = 'on_red'
                             message = "NO READ"
                             serial_data = 'error' # it is return value for checking
+                        
+                        if 'ABBRUCH' in serial_data:
+                            bg_color = 'on_red'
+                            serial_data = 'error'
                             
                         print(colored(f" {message} ", 'grey', bg_color))
                         
                         break
-                        
+            except KeyboardInterrupt:
+                print()
+                print(colored("---------------------------------------", 'red'))
+                print("> Script end")
+                print(colored("---------------------------------------", 'red'))
+                sys.exit()
+                            
             except Exception as e:
                 if(not(self.ser == None)):
                     self.ser.close()
@@ -156,6 +166,12 @@ class TcpConnector:
                     print(colored(' ++ ', 'blue', 'on_white'), end='')
                     sys.stdout.flush()
 
+            except KeyboardInterrupt:
+                print()
+                print(colored("---------------------------------------", 'red'))
+                print("> Script end")
+                print(colored("---------------------------------------", 'red'))
+                sys.exit()
             except:
                 recieved_data = 'error'
         
@@ -190,7 +206,9 @@ class Db:
         return result
         
     def update_data_in_db(self, serial_data, tcp_data):
-
+        
+        result = 'ok'
+        
         tcp_list = tcp_data.split("#")
         # EXAMPLE
         # ['N01HHAR2502301', 'Ca', '131945', 'T04222', 'S0002130', 'N01']
@@ -241,7 +259,9 @@ class Db:
         else:
             # DATA NOT FOUND IN DB
             print(colored(' No entry in DB found ', 'grey', 'on_yellow'))
-
+            result = 'not_found'
+        
+        return result
 
 
 class Email:
@@ -260,17 +280,29 @@ class Email:
         self.message = message
     
     
-    def send_email(self):
-        # DONT MAKE IDENTATION 
-        msg = MIMEText(self.message)
-        msg['Subject'] = self.subject
-        msg['From'] = self.sender
-        msg['To'] = self.receiver
+    def send_email(self, msg = ''):
         
-        with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
-            server.login(self.smtp_user, self.smtp_pass)
-            server.sendmail(self.sender, self.receiver, msg.as_string())
+        # DONT MAKE IDENTATION 
+        if msg == '':
+            msg = self.message
+        
+        try:
+            msg = MIMEText(msg)
+            msg['Subject'] = self.subject
+            msg['From'] = self.sender
+            msg['To'] = self.receiver
             
+            with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
+                server.login(self.smtp_user, self.smtp_pass)
+                server.sendmail(self.sender, self.receiver, msg.as_string())
+            
+            print(colored(' Email Sent ', 'grey', 'on_magenta'))
+            
+        except smtplib.SMTPResponseException as e:
+            print(colored(' Email Not Sent ', 'grey', 'on_red'))
+        except:
+            print(colored(' Email Not Sent ', 'grey', 'on_red'))
+       
     
     def test_email(self):
         result = 'ok'
@@ -397,28 +429,41 @@ def main(ser, tcp_con, db, email, error_frequency, error_time_period):
             # READ TCP DATA
             tcp_data = tcp_con.read_tcp_data()
             # CHECK TCP DATA
-            error_data = check_error_data(tcp_data, error_data)
+            # error_data = check_error_data(tcp_data, error_data)
             
             
-            if tcp_data != '':
+            if tcp_data != '' and tcp_data != 'error':
                 # READ SERAIL DATA
                 serial_data = ser.read_serial_data()
                 # CHECK SERIAL DATA
-                error_data = check_error_data(serial_data, error_data)
+                # error_data = check_error_data(serial_data, error_data)
+            else:
+                print()
             
             
-            if error_data['count'] >= error_frequency:
-                time_delta_min = int((datetime.now() - error_data['time']).total_seconds() / 60)
+            # if error_data['count'] >= error_frequency:
+            #     time_delta_min = int((datetime.now() - error_data['time']).total_seconds() / 60)
                 
-                # IF IN 5 MUNUTE OCCURED 3 ERROR
-                if time_delta_min <= error_time_period:
-                    if email:
-                        try:
-                            email.send_email()
-                            error_data['count'] = 0
-                            print(colored(' Email Sent ', 'grey', 'on_green'))
-                        except:
-                            print(colored(' Email not send ', 'grey', 'on_red'))
+            #     # IF IN 5 MUNUTE OCCURED 3 ERROR
+            #     if time_delta_min <= error_time_period:
+            #         if email:
+            #             try:
+            #                 email.send_email()
+            #                 error_data['count'] = 0
+            #                 print(colored(' Email Sent ', 'grey', 'on_green'))
+            #             except:
+            #                 print(colored(' Email not send ', 'grey', 'on_red'))
+            
+            
+            # SEND EMAIL ON TCP CAMERA ERROR
+            if tcp_data == 'error':
+                msg = "Msg: {}, Camera: {}, Screwdriver: {}".format("NO_Read Camera", tcp_data, serial_data)
+                email.send_email(msg)    
+            
+            # SEND EMAIL ON SERIAL SCREWDRIVER ERROR
+            if serial_data == 'error':
+                msg = "Msg: {}, Camera: {}, Screwdriver: {}".format("Error Screwing", tcp_data, serial_data)
+                email.send_email(msg)  
             
             
             # CHECK DATA IN DB
@@ -426,8 +471,12 @@ def main(ser, tcp_con, db, email, error_frequency, error_time_period):
                 
                 if db:
                     # UPDATE DATA IN DB
-                    db.update_data_in_db(serial_data, tcp_data)
+                    db_result = db.update_data_in_db(serial_data, tcp_data)
                     
+                    # SEND EMAIL ON DATABASE NOT FOUND ERROR
+                    if db_result == 'not_found':
+                        msg = "Msg: {}, Camera: {}, Screwdriver: {}".format("No Entry in DB", tcp_data, serial_data)
+                        email.send_email(msg)    
                     # THIS MESSAGE MUST DEPEND ON DB UPDATE OR NOT
                     # print(colored(' DB OK ', 'grey', 'on_green'))
             
