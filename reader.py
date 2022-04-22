@@ -87,12 +87,12 @@ class SerialConnector:
                         if 'Grad  IO' in serial_data:
                             bg_color = 'on_green'
                         
-                        if len(serial_data.split(" ")) < 9 or 'undefined' in serial_data:
+                        elif len(serial_data.split(" ")) < 9 or 'undefined' in serial_data:
                             bg_color = 'on_red'
                             message = "NO READ"
                             serial_data = 'error' # it is return value for checking
                         
-                        if 'ABBRUCH' in serial_data:
+                        elif 'ABBRUCH' in serial_data:
                             bg_color = 'on_red'
                             serial_data = 'error'
                             
@@ -455,7 +455,9 @@ def main(ser, tcp_con, db, email, error_frequency, error_time_period):
             #                 print(colored(' Email not send ', 'grey', 'on_red'))
             
             
-            # SEND EMAIL ON TCP CAMERA ERROR
+            # IF EMAIL IS CONFIGURED
+            # if email is not None:
+                # SEND EMAIL ON TCP CAMERA ERROR
             if tcp_data == 'error':
                 msg = "Msg: {}, Camera: {}, Screwdriver: {}".format("NO_Read Camera", tcp_data, serial_data)
                 email.send_email(msg)    
@@ -468,15 +470,16 @@ def main(ser, tcp_con, db, email, error_frequency, error_time_period):
             
             # CHECK DATA IN DB
             if serial_data != '' and serial_data != 'error' and tcp_data != 'error':
-                
+                # IF DATABASE IS CONFIGURE
                 if db:
                     # UPDATE DATA IN DB
                     db_result = db.update_data_in_db(serial_data, tcp_data)
                     
                     # SEND EMAIL ON DATABASE NOT FOUND ERROR
                     if db_result == 'not_found':
-                        msg = "Msg: {}, Camera: {}, Screwdriver: {}".format("No Entry in DB", tcp_data, serial_data)
-                        email.send_email(msg)    
+                        if email:
+                            msg = "Msg: {}, Camera: {}, Screwdriver: {}".format("No Entry in DB", tcp_data, serial_data)
+                            email.send_email(msg)    
                     # THIS MESSAGE MUST DEPEND ON DB UPDATE OR NOT
                     # print(colored(' DB OK ', 'grey', 'on_green'))
             
