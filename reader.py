@@ -432,7 +432,7 @@ def main(ser, tcp_con, db, email, error_frequency, error_time_period):
             # error_data = check_error_data(tcp_data, error_data)
             
             
-            if tcp_data != '' and tcp_data != 'error':
+            if tcp_data != '':
                 # READ SERAIL DATA
                 serial_data = ser.read_serial_data()
                 # CHECK SERIAL DATA
