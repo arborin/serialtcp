@@ -137,14 +137,20 @@ class TcpConnector:
         return recieved_data
             
             
-    def read_tcp_data(self):
-
+    def read_tcp_data(self):       
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            try:               
-                s.connect((self.host, self.port))   
+            
+            # from socket import IPPROTO_TCP, SO_KEEPALIVE, TCP_KEEPIDLE, TCP_KEEPINTVL, TCP_KEEPCNT
+            # s.setsockopt(socket.SOL_SOCKET, SO_KEEPALIVE, 1)
+            # s.setsockopt(IPPROTO_TCP, TCP_KEEPIDLE, 1)
+            # s.setsockopt(IPPROTO_TCP, TCP_KEEPINTVL, 1)
+            # s.setsockopt(IPPROTO_TCP, TCP_KEEPCNT, 3)
+            
+            try:
+                s.connect((self.host, self.port))
                 data = s.recv(1024)
                 recieved_data = data.decode('utf-8').strip().replace("\r\n","")
-                
+
                 # EXAMPLE
                 # HHAR2502301##Ca##131945##T04222##S0002129##N01
                 # ['N01HHAR2502301', 'Ca', '131945', 'T04222', 'S0002130', 'N01']
@@ -457,14 +463,14 @@ def main(ser, tcp_con, db, email, error_frequency, error_time_period):
             
             # IF EMAIL IS CONFIGURED
             # if email is not None:
-                # SEND EMAIL ON TCP CAMERA ERROR
+            # SEND EMAIL ON TCP CAMERA ERROR
             if tcp_data == 'error':
-                msg = "Msg: {}, Camera: {}, Screwdriver: {}".format("NO_Read Camera", tcp_data, serial_data)
+                msg = "Meldung: {} \r\n \r\n DMC: {} \r\n Screwdriver: {}".format("Kein DMC Wert lesbar", tcp_data, serial_data)
                 email.send_email(msg)    
             
             # SEND EMAIL ON SERIAL SCREWDRIVER ERROR
             if serial_data == 'error':
-                msg = "Msg: {}, Camera: {}, Screwdriver: {}".format("Error Screwing", tcp_data, serial_data)
+                msg = "Meldung: {} \r\n \r\n DMC: {} \r\n Screwdriver: {}".format("Fehlerhafter Wert bei der Verschraubung!", tcp_data, serial_data)
                 email.send_email(msg)  
             
             
@@ -478,7 +484,7 @@ def main(ser, tcp_con, db, email, error_frequency, error_time_period):
                     # SEND EMAIL ON DATABASE NOT FOUND ERROR
                     if db_result == 'not_found':
                         if email:
-                            msg = "Msg: {}, Camera: {}, Screwdriver: {}".format("No Entry in DB", tcp_data, serial_data)
+                            msg = "Meldung: {} \r\n \r\n DMC: {} \r\n  Screwdriver: {}".format("Es gibt keinen Eintrag fuer diesen DMC-Code in der Datenbank.", tcp_data, serial_data)
                             email.send_email(msg)    
                     # THIS MESSAGE MUST DEPEND ON DB UPDATE OR NOT
                     # print(colored(' DB OK ', 'grey', 'on_green'))
