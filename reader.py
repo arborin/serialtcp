@@ -229,6 +229,7 @@ class Db:
         }
 
         search_result = self.coll.find_one(search_dict)
+        
 
         if search_result:
             update_vals = serial_data.split(" ")
@@ -239,7 +240,9 @@ class Db:
             #                 ['30.03.2022', '12:15:49', 'PG:11', 'TQ:3.49', 'Nm', 'AN:10', 'Grad', 'IO']
                         
             # get keys and values will be next elements in list
-            values = {}
+            
+            # GET EXISTING VALUES
+            values = search_result['Measurement_Values']
 
             values['Date'] = update_vals[0]
             values['Time'] = update_vals[1]
@@ -548,7 +551,7 @@ if __name__ == "__main__":
     
         # True - write data in database
         # False - don't data in database
-        write_db = False
+        write_db = True
         
         # True - send email
         # False - don't send email
