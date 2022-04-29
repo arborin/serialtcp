@@ -242,7 +242,7 @@ class Db:
             # get keys and values will be next elements in list
             
             # GET EXISTING VALUES
-            values = search_result['Measurement_Values']
+            values = search_result.get('Measurement_Values', {})
 
             values['Date'] = update_vals[0]
             values['Time'] = update_vals[1]
@@ -478,7 +478,7 @@ def main(ser, tcp_con, db, email, error_frequency, error_time_period):
             
             
             # CHECK DATA IN DB
-            if serial_data != '' and serial_data != 'error' and tcp_data != 'error':
+            if serial_data != '' and tcp_data != 'error':
                 # IF DATABASE IS CONFIGURE
                 if db:
                     # UPDATE DATA IN DB
