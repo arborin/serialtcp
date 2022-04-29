@@ -61,6 +61,8 @@ class SerialConnector:
         '''
     
         serial_data = 'error'
+        
+        result = {'status': 'error', 'serial_data': ''}
             
         while(True):
             
@@ -84,17 +86,20 @@ class SerialConnector:
                         bg_color = 'on_red'
                         message = serial_data
                         
+                        result['data'] = serial_data
+                        
                         if 'Grad  IO' in serial_data:
                             bg_color = 'on_green'
+                            result['status'] = 'ok'
                         
                         elif len(serial_data.split(" ")) < 9 or 'undefined' in serial_data:
                             bg_color = 'on_red'
                             message = "NO READ"
-                            serial_data = 'error' # it is return value for checking
+                            result['status'] = 'error'
                         
                         elif 'ABBRUCH' in serial_data:
                             bg_color = 'on_red'
-                            serial_data = 'error'
+                            result['status'] = 'error'
                             
                         print(colored(f" {message} ", 'grey', bg_color))
                         
@@ -114,7 +119,7 @@ class SerialConnector:
                     # print(e)
                 break
                                     
-        return serial_data
+        return result
 
 
 class TcpConnector:
@@ -145,12 +150,13 @@ class TcpConnector:
             # s.setsockopt(IPPROTO_TCP, TCP_KEEPIDLE, 1)
             # s.setsockopt(IPPROTO_TCP, TCP_KEEPINTVL, 1)
             # s.setsockopt(IPPROTO_TCP, TCP_KEEPCNT, 3)
-            
+            result = {'data': '', 'status': 'ok'}
             try:
                 s.connect((self.host, self.port))
                 data = s.recv(1024)
                 recieved_data = data.decode('utf-8').strip().replace("\r\n","")
-
+                
+                result['data'] = recieved_data
                 # EXAMPLE
                 # HHAR2502301##Ca##131945##T04222##S0002129##N01
                 # ['N01HHAR2502301', 'Ca', '131945', 'T04222', 'S0002130', 'N01']
@@ -164,7 +170,7 @@ class TcpConnector:
                 if data_length != 6: 
                     bg_color = 'on_blue'
                     message = "NO READ"
-                    recieved_data = 'error'
+                    result['status'] = 'error'
             
                 # IF RECEIVED DATA IS NOT EMPTY LINE PRINT THIS LINE
                 if recieved_data != '':
@@ -179,9 +185,9 @@ class TcpConnector:
                 print(colored("---------------------------------------", 'red'))
                 sys.exit()
             except:
-                recieved_data = 'error'
+                result['status'] = 'error'
         
-        return recieved_data
+        return result
         
 
 class Db:
@@ -230,41 +236,44 @@ class Db:
 
         search_result = self.coll.find_one(search_dict)
         
-
         if search_result:
-            update_vals = serial_data.split(" ")
-            
-            # STRING EXAMPLE  30.03.2022 12:15:53 PG:11 TQ:0.03 Nm AN:1861 Grad ABBRUCH
-            #                 ['30.03.2022', '12:15:53', 'PG:11', 'TQ:0.03', 'Nm', 'AN:1861', 'Grad', 'ABBRUCH']
-            # STRING EXAMPLE  30.03.2022 12:15:49 PG:11 TQ:3.49 Nm AN:10 Grad IO
-            #                 ['30.03.2022', '12:15:49', 'PG:11', 'TQ:3.49', 'Nm', 'AN:10', 'Grad', 'IO']
-                        
-            # get keys and values will be next elements in list
-            
-            # GET EXISTING VALUES
-            values = search_result.get('Measurement_Values', {})
-
-            values['Date'] = update_vals[0]
-            values['Time'] = update_vals[1]
-            
-            for data in update_vals:
-                if "PG:" in data:
-                    values['PG'] = data.split(":")[-1]
-                elif "TQ:" in data:
-                    values['TQ'] = data.split(":")[-1]
-                elif "AN:" in data:
-                    values['AN'] = data.split(":")[-1]
+            try:
+                update_vals = serial_data.split(" ")
                 
+                # STRING EXAMPLE  30.03.2022 12:15:53 PG:11 TQ:0.03 Nm AN:1861 Grad ABBRUCH
+                #                 ['30.03.2022', '12:15:53', 'PG:11', 'TQ:0.03', 'Nm', 'AN:1861', 'Grad', 'ABBRUCH']
+                # STRING EXAMPLE  30.03.2022 12:15:49 PG:11 TQ:3.49 Nm AN:10 Grad IO
+                #                 ['30.03.2022', '12:15:49', 'PG:11', 'TQ:3.49', 'Nm', 'AN:10', 'Grad', 'IO']
+                            
+                # get keys and values will be next elements in list
+                
+                # GET EXISTING VALUES
+                values = search_result.get('Measurement_Values', {})
 
-            
-            # CREATE STRING COMMENT FROM LIST
-            values['Comment'] = " ".join(update_vals[6:])
-            
-            # update existing value list
-            # values.update(search_result['Measurement_Values'])
-            # print(values)
-            self.coll.update_one(search_dict, { "$set": { "Measurement_Values":  values }})
-        
+                values['Date'] = update_vals[0]
+                values['Time'] = update_vals[1]
+                
+                for data in update_vals:
+                    if "PG:" in data:
+                        values['PG'] = data.split(":")[-1]
+                    elif "TQ:" in data:
+                        values['TQ'] = data.split(":")[-1]
+                    elif "AN:" in data:
+                        values['AN'] = data.split(":")[-1]
+                    
+
+                
+                # CREATE STRING COMMENT FROM LIST
+                values['Comment'] = " ".join(update_vals[6:])
+                
+                # update existing value list
+                # values.update(search_result['Measurement_Values'])
+                # print(values)
+                self.coll.update_one(search_dict, { "$set": { "Measurement_Values":  values }})
+            except:
+                # DATA NOT FOUND IN DB
+                print(colored(' DB record update error ', 'grey', 'on_yellow'))
+                result = 'not_found'
         else:
             # DATA NOT FOUND IN DB
             print(colored(' No entry in DB found ', 'grey', 'on_yellow'))
@@ -410,10 +419,7 @@ def check_error_data(get_data, error_data):
     
     return error_data
     
-    
-        
-    
-        
+  
 
 
 def main(ser, tcp_con, db, email, error_frequency, error_time_period):
@@ -425,9 +431,6 @@ def main(ser, tcp_con, db, email, error_frequency, error_time_period):
     serial_data = None
     
     print_color_codes()
-    
-    # COUNTING ERRORS 
-    error_data = {'count': 0, 'time': ''}
     
     
     print("Listening to TCP & USB data stream....")
@@ -441,7 +444,7 @@ def main(ser, tcp_con, db, email, error_frequency, error_time_period):
             # error_data = check_error_data(tcp_data, error_data)
             
             
-            if tcp_data != '':
+            if tcp_data['data'] != '':
                 # READ SERAIL DATA
                 serial_data = ser.read_serial_data()
                 # CHECK SERIAL DATA
@@ -449,48 +452,33 @@ def main(ser, tcp_con, db, email, error_frequency, error_time_period):
             else:
                 print()
             
-            
-            # if error_data['count'] >= error_frequency:
-            #     time_delta_min = int((datetime.now() - error_data['time']).total_seconds() / 60)
-                
-            #     # IF IN 5 MUNUTE OCCURED 3 ERROR
-            #     if time_delta_min <= error_time_period:
-            #         if email:
-            #             try:
-            #                 email.send_email()
-            #                 error_data['count'] = 0
-            #                 print(colored(' Email Sent ', 'grey', 'on_green'))
-            #             except:
-            #                 print(colored(' Email not send ', 'grey', 'on_red'))
-            
-            
+
             # IF EMAIL IS CONFIGURED
             # if email is not None:
             # SEND EMAIL ON TCP CAMERA ERROR
-            if tcp_data == 'error':
-                msg = "Meldung: {} \r\n \r\n DMC: {} \r\n Screwdriver: {}".format("Kein DMC Wert lesbar", tcp_data, serial_data)
+            if tcp_data['status'] == 'error':
+                msg = "Meldung: {} \r\n \r\n DMC: {} \r\n Screwdriver: {}".format("Kein DMC Wert lesbar", tcp_data['data'], serial_data['data'])
                 email.send_email(msg)    
             
+            
             # SEND EMAIL ON SERIAL SCREWDRIVER ERROR
-            if serial_data == 'error':
-                msg = "Meldung: {} \r\n \r\n DMC: {} \r\n Screwdriver: {}".format("Fehlerhafter Wert bei der Verschraubung!", tcp_data, serial_data)
+            if serial_data['status'] == 'error':
+                msg = "Meldung: {} \r\n \r\n DMC: {} \r\n Screwdriver: {}".format("Fehlerhafter Wert bei der Verschraubung!", tcp_data['data'], serial_data['data'])
                 email.send_email(msg)  
             
             
             # CHECK DATA IN DB
-            if serial_data != '' and tcp_data != 'error':
-                # IF DATABASE IS CONFIGURE
-                if db:
-                    # UPDATE DATA IN DB
-                    db_result = db.update_data_in_db(serial_data, tcp_data)
-                    
-                    # SEND EMAIL ON DATABASE NOT FOUND ERROR
-                    if db_result == 'not_found':
-                        if email:
-                            msg = "Meldung: {} \r\n \r\n DMC: {} \r\n  Screwdriver: {}".format("Es gibt keinen Eintrag fuer diesen DMC-Code in der Datenbank.", tcp_data, serial_data)
-                            email.send_email(msg)    
-                    # THIS MESSAGE MUST DEPEND ON DB UPDATE OR NOT
-                    # print(colored(' DB OK ', 'grey', 'on_green'))
+            if ( serial_data['data'] != '' ) and ( tcp_data['status'] != 'error' ) and (db is not None):
+                # UPDATE DATA IN DB
+                                
+                db_result = db.update_data_in_db(serial_data['data'], tcp_data['data'])
+                
+                # SEND EMAIL ON DATABASE NOT FOUND ERROR
+                if db_result == 'not_found' and email == True:
+                    msg = "Meldung: {} \r\n \r\n DMC: {} \r\n  Screwdriver: {}".format("Es gibt keinen Eintrag fuer diesen DMC-Code in der Datenbank.", tcp_data['data'], serial_data['data'])
+                    email.send_email(msg)    
+                # THIS MESSAGE MUST DEPEND ON DB UPDATE OR NOT
+                # print(colored(' DB OK ', 'grey', 'on_green'))
             
             # GET ERROR MESSAGE
 
